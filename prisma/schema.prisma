@@ -1,0 +1,392 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Tenant {
+  id            String    @id @default(cuid())
+  name          String
+  nameBn        String
+  code          String    @unique
+  domain        String?
+  logoUrl       String?
+  contactPhone  String?
+  contactEmail  String?
+  address       String?
+  status        String    @default("ACTIVE") // ACTIVE, SUSPENDED, PENDING
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  users         User[]
+  counters      Counter[]
+  buses         Bus[]
+  routes        Route[]
+  trips         Trip[]
+  bookings      Booking[]
+  payments      Payment[]
+  cashShifts    CashShift[]
+  settlements   Settlement[]
+  subscriptions Subscription[]
+}
+
+model SubscriptionPlan {
+  id              String         @id @default(cuid())
+  name            String
+  code            String         @unique // STARTER, GROWTH, BUSINESS, ENTERPRISE
+  nameBn          String
+  priceMonthly    Float
+  priceYearly     Float
+  maxBuses        Int
+  maxRoutes       Int
+  maxCounters     Int
+  maxStaff        Int
+  features        String         // JSON string of features
+  isActive        Boolean        @default(true)
+  subscriptions   Subscription[]
+}
+
+model Subscription {
+  id                 String           @id @default(cuid())
+  tenantId           String
+  tenant             Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  planId             String
+  plan               SubscriptionPlan @relation(fields: [planId], references: [id])
+  status             String           @default("ACTIVE") // ACTIVE, TRIAL, EXPIRED, CANCELLED
+  currentPeriodStart DateTime         @default(now())
+  currentPeriodEnd   DateTime
+  renewalType        String           @default("AUTO")
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+}
+
+model User {
+  id              String      @id @default(cuid())
+  tenantId        String?
+  tenant          Tenant?     @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  name            String
+  email           String      @unique
+  phone           String?
+  passwordHash    String
+  role            String      // SUPER_ADMIN, PLATFORM_SUPPORT, OPERATOR_OWNER, TRANSPORT_MANAGER, COUNTER_MANAGER, COUNTER_AGENT, ACCOUNTANT, BOARDING_STAFF, FLEET_MANAGER, CUSTOMER
+  isActive        Boolean     @default(true)
+  avatarUrl       String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  counterAssignments StaffAssignment[]
+  createdBookings    Booking[]         @relation("BookingAgent")
+  cashShifts         CashShift[]
+  auditLogs          AuditLog[]
+}
+
+model Counter {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  nameBn      String
+  code        String
+  city        String
+  location    String
+  phone       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  staffAssignments StaffAssignment[]
+  bookings         Booking[]
+  cashShifts       CashShift[]
+}
+
+model StaffAssignment {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  counterId String?
+  counter   Counter? @relation(fields: [counterId], references: [id], onDelete: SetNull)
+  role      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Bus {
+  id             String    @id @default(cuid())
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  regNumber      String    @unique
+  fleetNumber    String
+  coachType      String    // SLEEPER, BUSINESS_CLASS, STANDARD_AC, STANDARD_NON_AC
+  model          String
+  totalSeats     Int       @default(40)
+  seatLayoutType String    @default("2x2") // 2x2, 2x1, 1x1
+  isAc           Boolean   @default(true)
+  amenities      String    // JSON string e.g. ["Wifi", "Charging", "Water", "Blanket"]
+  status         String    @default("ACTIVE") // ACTIVE, MAINTENANCE, INACTIVE
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  trips          Trip[]
+}
+
+model Route {
+  id                 String      @id @default(cuid())
+  tenantId           String
+  tenant             Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name               String
+  nameBn             String
+  originCity         String
+  destinationCity    String
+  distanceKm         Float
+  estDurationMinutes Int
+  isActive           Boolean     @default(true)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  stops              RouteStop[]
+  trips              Trip[]
+}
+
+model RouteStop {
+  id                 String   @id @default(cuid())
+  routeId            String
+  route              Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stopName           String
+  stopNameBn         String
+  stopType           String   @default("BOTH") // BOARDING, DROPPING, BOTH
+  sequenceOrder      Int
+  timeOffsetMinutes  Int      @default(0)
+  createdAt          DateTime @default(now())
+}
+
+model Trip {
+  id                 String     @id @default(cuid())
+  tenantId           String
+  tenant             Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  routeId            String
+  route              Route      @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  busId              String
+  bus                Bus        @relation(fields: [busId], references: [id])
+  departureTime      DateTime
+  arrivalTime        DateTime
+  baseFare           Float
+  serviceFee         Float      @default(50.0)
+  status             String     @default("SCHEDULED") // SCHEDULED, BOARDING, DEPARTED, ON_HIGHWAY, REST_BREAK, COMPLETED, CANCELLED
+  driverName         String?
+  driverPhone        String?
+  supervisorName     String?
+  supervisorPhone    String?
+  trafficStatus      String?    @default("NORMAL") // NORMAL, MODERATE_JAM, SEVERE_JAM, REST_BREAK
+  trafficNote        String?    @default("Highway condition is normal.")
+  currentLocation    String?    @default("Origin Terminal")
+  delayMinutes       Int        @default(0)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  seats              TripSeat[]
+  seatHolds          SeatHold[]
+  bookings           Booking[]
+}
+
+model TripSeat {
+  id           String    @id @default(cuid())
+  tripId       String
+  trip         Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  seatNumber   String
+  seatClass    String    @default("STANDARD") // STANDARD, VIP, PREMIUM
+  fare         Float
+  status       String    @default("AVAILABLE") // AVAILABLE, HELD, BOOKED, BLOCKED
+  heldUntil    DateTime?
+  heldByToken  String?
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([tripId, seatNumber])
+}
+
+model SeatHold {
+  id           String    @id @default(cuid())
+  tripId       String
+  trip         Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  seatNumber   String
+  holdToken    String
+  expiresAt    DateTime
+  customerSessionId String?
+  createdAt    DateTime  @default(now())
+
+  @@unique([tripId, seatNumber])
+}
+
+model Booking {
+  id              String      @id @default(cuid())
+  tenantId        String
+  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  pnr             String      @unique
+  tripId          String
+  trip            Trip        @relation(fields: [tripId], references: [id])
+  userId          String?
+  customerName    String
+  customerPhone   String
+  customerEmail   String?
+  totalAmount     Float
+  discountAmount  Float       @default(0.0)
+  payableAmount   Float
+  status          String      @default("CONFIRMED") // PENDING, CONFIRMED, CANCELLED, REFUNDED
+  bookingChannel  String      @default("ONLINE") // ONLINE, COUNTER, PHONE
+  counterId       String?
+  counter         Counter?    @relation(fields: [counterId], references: [id], onDelete: SetNull)
+  agentId         String?
+  agent           User?       @relation("BookingAgent", fields: [agentId], references: [id], onDelete: SetNull)
+  boardingStop    String?
+  droppingStop    String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  passengers      BookingPassenger[]
+  tickets         Ticket[]
+  payments        Payment[]
+  refunds         Refund[]
+}
+
+model BookingPassenger {
+  id             String   @id @default(cuid())
+  bookingId      String
+  booking        Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  seatNumber     String
+  passengerName  String
+  passengerPhone String?
+  gender         String?  // MALE, FEMALE, OTHER
+  age            Int?
+  fare           Float
+}
+
+model Ticket {
+  id               String    @id @default(cuid())
+  bookingId        String
+  booking          Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  ticketNumber     String    @unique
+  pnr              String
+  seatNumber       String
+  qrCodeData       String
+  verificationCode String
+  status           String    @default("ISSUED") // ISSUED, BOARDED, CANCELLED
+  boardedAt        DateTime?
+  boardedByStaffId String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model Payment {
+  id              String    @id @default(cuid())
+  bookingId       String
+  booking         Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  transactionRef  String    @unique
+  amount          Float
+  currency        String    @default("BDT")
+  paymentMethod   String    // CASH, BKASH, NAGAD, SSLCOMMERZ, CARD
+  status          String    @default("SUCCESS") // PENDING, SUCCESS, FAILED, REFUNDED
+  isDemo          Boolean   @default(true)
+  gatewayResponse String?   // JSON string
+  createdAt       DateTime  @default(now())
+
+  refunds         Refund[]
+}
+
+model Refund {
+  id              String    @id @default(cuid())
+  bookingId       String
+  booking         Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  paymentId       String?
+  payment         Payment?  @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  amount          Float
+  penaltyFee      Float     @default(0.0)
+  reason          String
+  status          String    @default("APPROVED") // REQUESTED, APPROVED, PROCESSED, REJECTED
+  approvedByUserId String?
+  processedAt     DateTime?
+  createdAt       DateTime  @default(now())
+}
+
+model CashShift {
+  id                    String            @id @default(cuid())
+  tenantId              String
+  tenant                Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  counterId             String
+  counter               Counter           @relation(fields: [counterId], references: [id], onDelete: Cascade)
+  agentId               String
+  agent                 User              @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  openedAt              DateTime          @default(now())
+  closedAt              DateTime?
+  openingBalance        Float             @default(0.0)
+  cashCollected         Float             @default(0.0)
+  cashRefunded          Float             @default(0.0)
+  authorizedExpenses    Float             @default(0.0)
+  cashTransferred       Float             @default(0.0)
+  expectedClosingBalance Float            @default(0.0)
+  actualClosingBalance  Float?
+  difference            Float?
+  status                String            @default("OPEN") // OPEN, CLOSED, RECONCILED
+  notes                 String?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  transactions          CashTransaction[]
+}
+
+model CashTransaction {
+  id          String    @id @default(cuid())
+  shiftId     String
+  shift       CashShift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  type        String    // TICKET_SALE, TICKET_REFUND, EXPENSE, TRANSFER_IN, TRANSFER_OUT
+  amount      Float
+  description String
+  referenceId String?
+  createdAt   DateTime  @default(now())
+}
+
+model Settlement {
+  id                 String    @id @default(cuid())
+  tenantId           String
+  tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  periodStart        DateTime
+  periodEnd          DateTime
+  grossRevenue       Float
+  totalRefunds       Float
+  platformCommission Float
+  netPayable         Float
+  status             String    @default("PENDING") // PENDING, APPROVED, PAID
+  paidReference      String?
+  createdAt          DateTime  @default(now())
+}
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  userId    String?
+  name      String
+  email     String
+  phone     String?
+  subject   String
+  message   String
+  priority  String   @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status    String   @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String?
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String
+  entityId   String
+  details    String?  // JSON string
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+}
