@@ -135,7 +135,7 @@ export async function ensureDistrictRouteTrips(originInput: string, destInput: s
       {
         hours: 7,
         minutes: 30,
-        bus: buses[0] || buses[0],
+        bus: buses[0 % buses.length],
         fare: rawAcFare,
         driver: 'মোঃ রফিকুল ইসলাম',
         supervisor: 'মোঃ আবুল কাশেম',
@@ -143,7 +143,7 @@ export async function ensureDistrictRouteTrips(originInput: string, destInput: s
       {
         hours: 13,
         minutes: 45,
-        bus: buses[1] || buses[0],
+        bus: buses[1 % buses.length],
         fare: rawSleeperFare,
         driver: 'মোঃ জামাল উদ্দিন',
         supervisor: 'মোঃ নজরুল ইসলাম',
@@ -151,7 +151,7 @@ export async function ensureDistrictRouteTrips(originInput: string, destInput: s
       {
         hours: 19,
         minutes: 30,
-        bus: buses[2] || buses[0],
+        bus: buses[2 % buses.length],
         fare: rawAcFare,
         driver: 'আলমগীর হোসেন',
         supervisor: 'জাহাঙ্গীর আলম',
@@ -159,7 +159,7 @@ export async function ensureDistrictRouteTrips(originInput: string, destInput: s
       {
         hours: 22,
         minutes: 15,
-        bus: buses[3] || buses[0],
+        bus: buses[3 % buses.length],
         fare: rawNonAcFare,
         driver: 'রফিক আহমেদ',
         supervisor: 'সোহেল রানা',

@@ -23,59 +23,71 @@ export async function GET(request: Request) {
     const originDist = findDistrict(origin);
     const destDist = findDistrict(destination);
 
-    // Build Prisma query filters
-    const whereClause: any = {
-      status: { in: ['SCHEDULED', 'BOARDING', 'ON_HIGHWAY'] },
-    };
+    // Build Prisma query filters with an explicit AND array to guarantee origin and destination do not overwrite each other
+    const andFilters: any[] = [
+      { status: { in: ['SCHEDULED', 'BOARDING', 'ON_HIGHWAY'] } },
+    ];
 
     if (origin) {
+      const originMatch: any[] = [
+        { originCity: { contains: origin, mode: 'insensitive' } },
+      ];
       if (originDist) {
-        whereClause.route = {
-          ...whereClause.route,
-          OR: [
-            { originCity: { contains: originDist.nameEn } },
-            { originCity: { contains: originDist.nameBn } },
-            { originCity: { contains: origin } },
-          ],
-        };
-      } else {
-        whereClause.route = {
-          ...whereClause.route,
-          originCity: { contains: origin },
-        };
+        originMatch.push({ originCity: { contains: originDist.nameEn, mode: 'insensitive' } });
+        originMatch.push({ originCity: { contains: originDist.nameBn } });
       }
+      andFilters.push({
+        route: {
+          OR: originMatch,
+        },
+      });
     }
 
     if (destination) {
+      const destMatch: any[] = [
+        { destinationCity: { contains: destination, mode: 'insensitive' } },
+      ];
       if (destDist) {
-        whereClause.route = {
-          ...whereClause.route,
-          OR: [
-            { destinationCity: { contains: destDist.nameEn } },
-            { destinationCity: { contains: destDist.nameBn } },
-            { destinationCity: { contains: destination } },
-          ],
-        };
-      } else {
-        whereClause.route = {
-          ...whereClause.route,
-          destinationCity: { contains: destination },
-        };
+        destMatch.push({ destinationCity: { contains: destDist.nameEn, mode: 'insensitive' } });
+        destMatch.push({ destinationCity: { contains: destDist.nameBn } });
       }
+      andFilters.push({
+        route: {
+          OR: destMatch,
+        },
+      });
     }
 
     if (busType) {
       if (busType === 'AC') {
-        whereClause.bus = { ...whereClause.bus, isAc: true };
+        andFilters.push({ bus: { isAc: true } });
       } else if (busType === 'NON_AC') {
-        whereClause.bus = { ...whereClause.bus, isAc: false };
+        andFilters.push({ bus: { isAc: false } });
       } else {
-        whereClause.bus = { ...whereClause.bus, coachType: busType };
+        andFilters.push({ bus: { coachType: busType } });
+      }
+    }
+
+    if (dateStr) {
+      const parsedDate = new Date(dateStr);
+      if (!isNaN(parsedDate.getTime())) {
+        const startOfDay = new Date(parsedDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(parsedDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        andFilters.push({
+          departureTime: {
+            gte: startOfDay,
+            lte: endOfDay,
+          },
+        });
       }
     }
 
     let trips = await prisma.trip.findMany({
-      where: whereClause,
+      where: {
+        AND: andFilters,
+      },
       include: {
         route: {
           include: {
@@ -92,10 +104,19 @@ export async function GET(request: Request) {
     });
 
     // If no trips found and specific origin & destination requested, dynamically ensure 64-district routes!
-    if (trips.length === 0 && origin && destination && origin !== destination) {
+    if (trips.length === 0 && origin && destination && origin.toLowerCase().trim() !== destination.toLowerCase().trim()) {
       const generatedTrips = await ensureDistrictRouteTrips(origin, destination, dateStr || undefined);
       if (generatedTrips && generatedTrips.length > 0) {
         trips = generatedTrips;
+        if (busType) {
+          if (busType === 'AC') {
+            trips = trips.filter((t) => t.bus.isAc);
+          } else if (busType === 'NON_AC') {
+            trips = trips.filter((t) => !t.bus.isAc);
+          } else {
+            trips = trips.filter((t) => t.bus.coachType === busType);
+          }
+        }
       }
     }
 

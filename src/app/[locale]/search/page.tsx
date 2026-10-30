@@ -65,7 +65,7 @@ export default function SearchPage({ params }: Props) {
 
   useEffect(() => {
     fetchTrips();
-  }, [originParam, destParam, busTypeFilter, timeFilter, sortBy]);
+  }, [originParam, destParam, dateParam, busTypeFilter, timeFilter, sortBy]);
 
   const fetchTrips = async () => {
     setLoading(true);
@@ -75,6 +75,7 @@ export default function SearchPage({ params }: Props) {
         destination: destParam,
         sortBy,
       });
+      if (dateParam) q.set('date', dateParam);
       if (busTypeFilter) q.set('busType', busTypeFilter);
       if (timeFilter) q.set('timeSlot', timeFilter);
 
