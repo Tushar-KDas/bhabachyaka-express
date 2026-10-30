@@ -26,12 +26,18 @@ export async function GET(request: Request, { params }: { params: { pnr: string 
       return NextResponse.json({ error: 'Booking not found with this PNR' }, { status: 404 });
     }
 
-    // Attach QR Code data URLs to tickets
+    const host = request.headers.get('host') || 'localhost:3000';
+    const protocol = request.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+    const verifyUrl = `${appUrl}/bn/verify-ticket?pnr=${encodeURIComponent(booking.pnr)}`;
+
+    // Attach QR Code data URLs to tickets encoding live verification URL
     const ticketsWithQr = await Promise.all(
       booking.tickets.map(async (t) => {
-        const qrUrl = await generateQRCodeDataUrl(t.qrCodeData);
+        const qrUrl = await generateQRCodeDataUrl(verifyUrl);
         return {
           ...t,
+          verifyUrl,
           qrCodeUrl: qrUrl,
         };
       })

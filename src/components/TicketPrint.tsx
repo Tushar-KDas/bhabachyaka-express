@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import {
   Printer,
@@ -130,7 +130,25 @@ export default function TicketPrint({ locale, data }: Props) {
 
   const paymentMethod = payments[0]?.paymentMethod || 'BKASH';
   const trxRef = payments[0]?.transactionRef || 'TRX-BKASH-86780999';
-  const qrCodeUrl = tickets[0]?.qrCodeUrl;
+  const [liveQrCodeUrl, setLiveQrCodeUrl] = useState<string>(tickets[0]?.qrCodeUrl || '');
+
+  useEffect(() => {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://bhabachyaka-express.vercel.app';
+    const verifyUrl = `${baseUrl}/${locale}/verify-ticket?pnr=${encodeURIComponent(pnr)}`;
+    import('qrcode')
+      .then((QRCode) => {
+        QRCode.toDataURL(verifyUrl, {
+          margin: 1,
+          width: 220,
+          color: { dark: '#0B1F3A', light: '#FFFFFF' },
+        }).then((dataUrl) => {
+          setLiveQrCodeUrl(dataUrl);
+        });
+      })
+      .catch(() => {});
+  }, [pnr, locale]);
+
+  const qrCodeUrl = liveQrCodeUrl || tickets[0]?.qrCodeUrl;
   const verificationCode = tickets[0]?.verificationCode || 'VER-E1-2034';
   const seatsList = passengers.map((p) => p.seatNumber).join(', ');
   const coachLabel = trip.bus.coachType.replace(/_/g, ' ') + (trip.bus.isAc ? ' (AC)' : ' (Non-AC)');

@@ -46,6 +46,7 @@ export default function Navbar({ locale }: Props) {
   const defaultItems = [
     { id: 'home', nameBn: 'হোম', nameEn: 'Home', href: '/', isActive: true },
     { id: 'search', nameBn: 'সার্চ বাস', nameEn: 'Search Buses', href: '/search', isActive: true },
+    { id: 'verify-ticket', nameBn: 'টিকিট চেক', nameEn: 'Verify Ticket', href: '/verify-ticket', isActive: true },
     { id: 'counters', nameBn: 'কাউন্টারসমূহ', nameEn: 'Counters', href: '/counters', isActive: true },
     { id: 'about', nameBn: 'আমাদের সম্পর্কে', nameEn: 'About Us', href: '/about', isActive: true },
     { id: 'packages', nameBn: 'প্যাকেজসমূহ', nameEn: 'Packages', href: '/packages', isActive: true },

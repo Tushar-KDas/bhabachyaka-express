@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import HeroBookingForm from '@/components/HeroBookingForm';
 import DistrictsExplorer from '@/components/DistrictsExplorer';
+import TicketCheckerClient from '@/components/TicketCheckerClient';
 import { getDictionary, Locale, formatBDT } from '@/lib/i18n';
 import { getSiteConfig } from '@/lib/siteConfigServer';
 
@@ -213,6 +214,11 @@ export default function HomePage({ params }: Props) {
           </div>
         </div>
       </section>
+
+      {/* ==============================================================
+          2.5 TICKET VERIFICATION & PNR LOOKUP (Homepage Feature)
+          ============================================================== */}
+      <TicketCheckerClient locale={locale} />
 
       {/* ==============================================================
           3. POPULAR ROUTES (Matches Reference UI: 5 Scenic Destination Cards)
