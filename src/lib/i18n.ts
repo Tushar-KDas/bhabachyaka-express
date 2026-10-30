@@ -8,8 +8,8 @@ export const dictionaries = {
   en: enMessages,
 };
 
-export function getDictionary(locale: Locale = 'bn') {
-  return dictionaries[locale] || dictionaries.bn;
+export function getDictionary(locale: Locale = 'en') {
+  return dictionaries[locale] || dictionaries.en;
 }
 
 export function toBengaliDigits(input: string | number): string {
@@ -17,7 +17,7 @@ export function toBengaliDigits(input: string | number): string {
   return String(input).replace(/[0-9]/g, (w) => bengaliDigits[+w]);
 }
 
-export function formatBDT(amount: number, locale: Locale = 'bn'): string {
+export function formatBDT(amount: number, locale: Locale = 'en'): string {
   const formatted = Math.round(amount).toLocaleString('en-US');
   if (locale === 'bn') {
     return `৳ ${toBengaliDigits(formatted)}`;
@@ -25,7 +25,7 @@ export function formatBDT(amount: number, locale: Locale = 'bn'): string {
   return `৳ ${formatted}`;
 }
 
-export function formatTime(dateStr: string | Date, locale: Locale = 'bn'): string {
+export function formatTime(dateStr: string | Date, locale: Locale = 'en'): string {
   const d = new Date(dateStr);
   const hours = d.getHours();
   const minutes = d.getMinutes().toString().padStart(2, '0');
@@ -35,7 +35,7 @@ export function formatTime(dateStr: string | Date, locale: Locale = 'bn'): strin
   return locale === 'bn' ? toBengaliDigits(timeString) : timeString;
 }
 
-export function formatDate(dateStr: string | Date, locale: Locale = 'bn'): string {
+export function formatDate(dateStr: string | Date, locale: Locale = 'en'): string {
   const d = new Date(dateStr);
   const options: Intl.DateTimeFormatOptions = {
     day: 'numeric',

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const LOCALES = ['bn', 'en'] as const;
-const DEFAULT_LOCALE = 'bn';
+const DEFAULT_LOCALE = 'en';
 
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
@@ -36,9 +36,9 @@ export function middleware(request: NextRequest) {
   }
 
   // If path doesn't have locale prefix (e.g. /packages, /counters, /about, /super-admin, /)
-  // Read saved locale from cookie or use DEFAULT_LOCALE ('bn')
+  // Read saved locale from cookie or use DEFAULT_LOCALE ('en')
   const savedLocaleCookie = request.cookies.get('bhabachyaka_locale')?.value;
-  const locale = (savedLocaleCookie === 'en' ? 'en' : DEFAULT_LOCALE);
+  const locale = (savedLocaleCookie === 'bn' ? 'bn' : DEFAULT_LOCALE);
 
   const targetPath = pathname === '/' ? `/${locale}` : `/${locale}${pathname}`;
   const targetUrl = new URL(`${targetPath}${search}`, request.url);
